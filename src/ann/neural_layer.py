@@ -36,7 +36,8 @@ class NeuralLayer:
         return Z
     
     def backward(self,dZ):
-        self.grad_W=self.input.T@dZ
-        self.grad_b=np.sum(dZ,axis=0,keepdims=True)
-        dX=dZ@self.W.T
+        batch_size = self.input.shape[0]
+        self.grad_W = (self.input.T @ dZ) / batch_size
+        self.grad_b = np.sum(dZ, axis=0, keepdims=True) / batch_size
+        dX = dZ @ self.W.T
         return dX

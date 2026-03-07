@@ -1,6 +1,6 @@
 """
 Activation Functions and Their Derivatives
-Implements: ReLU, Sigmoid, Tanh, Softmax
+Implements: ReLU, Sigmoid, Tanh
 """
 
 import numpy as np
@@ -31,9 +31,3 @@ class Tanh:
     def backward(self,dA):
         dZ=dA*(1-self.A**2)
         return dZ
-    
-class Softmax:
-    def forward(self,Z):
-        exp_Z=np.exp(Z-np.max(Z,axis=1,keepdims=True))
-        self.A=exp_Z/np.sum(exp_Z,axis=1,keepdims=True)
-        return self.A
