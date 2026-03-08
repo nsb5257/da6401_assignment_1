@@ -140,11 +140,23 @@ class NeuralNetwork:
             d[f"b{i}"] = layer.b.copy()
         return d
 
-    def set_weights(self, weight_dict):
+    def set_weights(self, weights):
+
         for i, layer in enumerate(self.layers):
+
             w_key = f"W{i}"
             b_key = f"b{i}"
-            if w_key in weight_dict:
-                layer.W = weight_dict[w_key].copy()
-            if b_key in weight_dict:
-                layer.b = weight_dict[b_key].copy()
+
+            if w_key in weights:
+                if weights[w_key].shape != layer.W.shape:
+                    raise ValueError(
+                        f"Weight shape mismatch {weights[w_key].shape} vs {layer.W.shape}"
+                    )
+                layer.W = weights[w_key]
+
+            if b_key in weights:
+                if weights[b_key].shape != layer.b.shape:
+                    raise ValueError(
+                        f"Bias shape mismatch {weights[b_key].shape} vs {layer.b.shape}"
+                    )
+                layer.b = weights[b_key]

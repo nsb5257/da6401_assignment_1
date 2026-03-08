@@ -94,6 +94,14 @@ def main():
     # Save model
     best_weights = model.get_weights()
     np.save(args.model_save_path, best_weights)
+    config = {
+        "hidden_size": args.hidden_size,
+        "activation": args.activation,
+        "loss": args.loss
+    }
+
+    with open("best_config.json", "w") as f:
+        json.dump(config, f)
     with open('best_config.json', 'w') as f:
         json.dump(vars(args), f, indent=4)
     print("Training complete!")

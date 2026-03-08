@@ -23,18 +23,19 @@ def parse_arguments():
     """
     parser = argparse.ArgumentParser(description='Run inference on test set')
     parser.add_argument('--dataset', type=str, default='mnist')
-    parser.add_argument('--num_layers', type=int, default=1)
     parser.add_argument('--epochs', type=int, default=5)
     parser.add_argument('--weight_decay', type=float, default=0.0)
     parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--learning_rate', type=float, default=0.001)
     parser.add_argument('--optimizer', type=str, default='rmsprop')
-    parser.add_argument('--hidden_size', nargs='+', type=int, default=[128])
-    parser.add_argument('--activation', type=str, default='sigmoid')
+    parser.add_argument('--num_layers', type=int, default=3)
+    parser.add_argument('--hidden_size', nargs='+', type=int, default=[128,128,128])
+    parser.add_argument('--activation', type=str, default='relu')
     parser.add_argument('--loss', type=str, default='cross_entropy')
     parser.add_argument('--weight_init', type=str, default='xavier')
     parser.add_argument('--wandb_project', type=str, default='dl_assignment_1')
     parser.add_argument('--model_path', type=str, default='src/best_model.npy')
+    parser.add_argument('--debug', action='store_true', help='Enable debug prints')
     return parser.parse_args()
 
 
@@ -85,11 +86,61 @@ def main():
     _, _, X_test, y_test = load_dataset(args.dataset)
 
     # initialize model
-    model = NeuralNetwork(args)
-
-    # load weights
     weights = load_model(args.model_path)
+
+    # ---- ADD THIS BLOCK ----
+    # Infer hidden layer sizes from saved weights
+    W_keys = sorted([k for k in weights.keys() if k.startswith("W")],
+                    key=lambda x: int(x[1:]))
+
+    W_shapes = [weights[k].shape for k in W_keys]
+
+    # hidden layer sizes = output size of each layer except last
+    if len(W_shapes) > 1:
+        args.hidden_size = [shape[1] for shape in W_shapes[:-1]]
+    else:
+        args.hidden_size = []
+
+    args.num_layers = len(args.hidden_size)
+
+    print("Inferred hidden layers:", args.hidden_size)
+    # ---- END BLOCK ----
+
+    model = NeuralNetwork(args)
     model.set_weights(weights)
+
+    if args.debug:
+        # Print dataset shapes and types
+        print("[debug] X_test shape, dtype, min/max:", X_test.shape, X_test.dtype,
+              np.min(X_test), np.max(X_test))
+        print("[debug] y_test shape, dtype, min/max:", y_test.shape, y_test.dtype,
+              np.min(y_test), np.max(y_test))
+
+        # If labels are one-hot, show sample argmax; otherwise, show sample ints
+        if len(y_test.shape) > 1 and y_test.shape[1] > 1:
+            print("[debug] y_test appears one-hot. sample true labels:", np.argmax(y_test[:20], axis=1))
+        else:
+            print("[debug] y_test appears int labels. sample true labels:", y_test[:20])
+
+        # Print saved weight keys & simple stats
+        W_keys = sorted([k for k in weights.keys()], key=lambda x: (not x.startswith("W"), x))
+        print("[debug] saved weight keys:", W_keys)
+        for k in W_keys[:10]:
+            v = weights[k]
+            print(f"[debug] {k} shape={v.shape} norm={np.linalg.norm(v):.4f} min={v.min():.4e} max={v.max():.4e}")
+
+        # Check the model layers shapes after init
+        print("[debug] model built with layers:", len(model.layers))
+        for i, layer in enumerate(model.layers):
+            print(f"[debug] layer {i} W shape: {layer.W.shape}, b shape: {layer.b.shape}")
+
+        # Run a small forward on the first 8 samples (and print logits stats)
+        small_X = X_test[:8]
+        logits = model.forward(small_X)
+        print("[debug] small logits shape:", logits.shape)
+        print("[debug] small logits sample row 0 (first 10 values):", logits[0][:10])
+        preds = np.argmax(logits, axis=1)
+        print("[debug] small preds:", preds)
 
     # evaluate
     results = evaluate_model(model, X_test, y_test)
